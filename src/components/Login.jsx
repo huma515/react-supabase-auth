@@ -8,6 +8,9 @@ const Login = ({ onLoginSuccess }) => {
     pass: "",
   });
 
+  const [loading, setLoading] = useState(false); // Optional: show loading state
+  const [errorMsg, setErrorMsg] = useState(""); // Optional: show error messages
+
   const handlechange = (e) => {
     loginsetValue({
       ...loginvalue,
@@ -17,15 +20,35 @@ const Login = ({ onLoginSuccess }) => {
 
   const handlesubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setErrorMsg("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: loginvalue.email,
-      password: loginvalue.pass,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginvalue.email,
+        password: loginvalue.pass,
+      });
 
-    if (data) console.log("Login successful:", data);
-    onLoginSuccess()
-    if (error) console.log("Login error:", error);
+      if (error) {
+        console.log("Login error:", error.message);
+        setErrorMsg(error.message);
+        setLoading(false);
+        return; // stop execution if login fails
+      }
+
+      if (data && data.user) {
+        console.log("Login successful:", data.user);
+        onLoginSuccess(); // Only call this if user exists
+      } else {
+        console.log("User not found or email not confirmed.");
+        setErrorMsg("Invalid credentials or user not found.");
+      }
+    } catch (err) {
+      console.log("Unexpected error:", err);
+      setErrorMsg("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,9 +84,13 @@ const Login = ({ onLoginSuccess }) => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary w-100">
-            Login
+          <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
           </button>
+
+          {errorMsg && (
+            <p className="text-center text-danger mt-3">{errorMsg}</p>
+          )}
         </form>
 
         <p className="text-center text-muted mt-3">
